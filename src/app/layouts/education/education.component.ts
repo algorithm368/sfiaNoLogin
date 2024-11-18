@@ -1,13 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
-import { Emitter } from 'src/app/emitters/emitter';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, AbstractControl, ValidatorFn } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { PrimeNGConfig } from 'primeng/api';
-import { finalize } from 'rxjs/operators';
-import { AbstractControl, ValidatorFn, Validators } from '@angular/forms';
-import { PortfolioDataService } from 'src/app/service/portfolio-data.service';
 
 interface EducationInfo {
   education_id: string;
@@ -26,16 +20,36 @@ interface EducationInfo {
   providers: [MessageService],
 })
 export class EducationComponent implements OnInit {
-  education: EducationInfo[] = [];
+  education: EducationInfo[] = [
+    {
+      education_id: '1',
+      syear: 2015,
+      eyear: 2019,
+      level_edu: 'Bachelor',
+      universe: 'ABC University',
+      faculty: 'Engineering',
+      branch: 'Computer Science',
+    },
+    {
+      education_id: '2',
+      syear: 2020,
+      eyear: 2022,
+      level_edu: 'Master',
+      universe: 'XYZ University',
+      faculty: 'Engineering',
+      branch: 'Information Technology',
+    },
+  ];
+
   updateForm: FormGroup;
+  displayAddEducation = false;
+  displayEditEducation = false;
+  confirmEdit = false;
 
   constructor(
-    public dialog: MatDialog,
-    private router: Router,
     private formBuilder: FormBuilder,
     private messageService: MessageService,
-    private primengConfig: PrimeNGConfig,
-    private portfolioDataService: PortfolioDataService
+    private primengConfig: PrimeNGConfig
   ) {
     this.updateForm = this.formBuilder.group(
       {
@@ -52,7 +66,6 @@ export class EducationComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.fetchEducationData();
     this.primengConfig.ripple = true;
   }
 
@@ -67,46 +80,9 @@ export class EducationComponent implements OnInit {
     return null;
   };
 
-  fetchEducationData(): void {
-    this.portfolioDataService.getEducationData().subscribe({
-      next: (res) => {
-        this.education = res.data;
-      },
-      error: () => {
-        this.router.navigate(['/login']);
-        Emitter.authEmitter.emit(false);
-      },
-    });
-  }
-
-  displayAddEducation: boolean = false;
-  displayEditEducation: boolean = false;
-  confirmEdit: boolean = false;
-
-  AddEducation() {
-    this.updateForm.patchValue({
-      syear: '',
-      eyear: '',
-      level_edu: '',
-      universe: '',
-      faculty: '',
-      branch: '',
-    });
+  AddEducation(): void {
+    this.updateForm.reset();
     this.displayAddEducation = true;
-  }
-
-  EditEducation(education: EducationInfo): void {
-    this.updateForm.patchValue({
-      education_id: education.education_id,
-      syear: education.syear,
-      eyear: education.eyear,
-      level_edu: education.level_edu,
-      universe: education.universe,
-      faculty: education.faculty,
-      branch: education.branch,
-    });
-
-    this.displayEditEducation = true;
   }
 
   saveAddEducation(): void {
@@ -120,174 +96,47 @@ export class EducationComponent implements OnInit {
       return;
     }
 
-    this.portfolioDataService.saveEducation(formData).subscribe({
-      next: (res) => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Education created successfully',
-        });
+    formData.education_id = (this.education.length + 1).toString();
+    this.education.push(formData);
 
-        setTimeout(() => {
-          this.messageService.clear();
-        }, 2500);
-
-        this.fetchEducationData();
-        this.displayAddEducation = false;
-
-        this.updateForm.reset({
-          syear: '',
-          eyear: '',
-          level_edu: '',
-          universe: '',
-          faculty: '',
-          branch: '',
-        });
-      },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to created Education',
-        });
-
-        setTimeout(() => {
-          this.messageService.clear();
-        }, 2500);
-      },
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Education added successfully',
     });
+
+    this.displayAddEducation = false;
+  }
+
+  EditEducation(education: EducationInfo): void {
+    this.updateForm.patchValue(education);
+    this.displayEditEducation = true;
   }
 
   saveEditEducation(): void {
-    if (!this.confirmEdit) {
+    const formData = this.updateForm.value;
+    const index = this.education.findIndex((e) => e.education_id === formData.education_id);
+
+    if (index > -1) {
+      this.education[index] = formData;
+
       this.messageService.add({
-        key: 'confirm1',
-        sticky: true,
-        severity: 'warn',
-        summary: 'Are you sure?',
-        detail: 'Are you sure you want to proceed?',
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Education updated successfully',
       });
-      this.confirmEdit = true;
+
+      this.displayEditEducation = false;
     }
   }
 
-  onConfirmEdit() {
-    const formData = this.updateForm.value;
-    if (formData.syear >= formData.eyear) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Validation Error',
-        detail: 'Start Year must be less than End Year',
-      });
-      return;
-    }
+  DeleteEducation(education: EducationInfo): void {
+    this.education = this.education.filter((e) => e.education_id !== education.education_id);
 
-    this.messageService.clear('confirm1');
-    this.portfolioDataService
-      .updateEducation(formData)
-      .pipe(finalize(() => (this.confirmEdit = false)))
-      .subscribe(
-        (res) => {
-          if (res.success) {
-            this.messageService.add({
-              severity: 'success',
-              summary: 'Success',
-              detail: 'Education updated successfully',
-            });
-
-            setTimeout(() => {
-              this.messageService.clear();
-            }, 2500);
-
-            this.fetchEducationData();
-            this.displayEditEducation = false;
-          } else {
-          }
-        },
-        (err) => {
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'Warning',
-            detail: 'Entered education data is the same as existing data.',
-          });
-
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        }
-      );
-  }
-
-  onRejectEdit() {
-    this.messageService.clear('confirm1');
-    this.displayEditEducation = false;
-    this.confirmEdit = false;
     this.messageService.add({
-      severity: 'error',
-      summary: 'Rejected',
-      detail: 'You have rejected',
-    });
-  }
-
-  DeleteEducation(education: EducationInfo) {
-    this.updateForm.patchValue({
-      education_id: education.education_id,
-      syear: education.syear,
-      eyear: education.eyear,
-      level_edu: education.level_edu,
-      universe: education.universe,
-      faculty: education.faculty,
-      branch: education.branch,
-    });
-    this.messageService.add({
-      key: 'confirm',
-      sticky: true,
-      severity: 'warn',
-      summary: 'Confirmation',
-      detail: 'Are you sure you want to proceed?',
-    });
-  }
-
-  onConfirm() {
-    const formData = this.updateForm.value;
-    const educationId = formData.education_id;
-
-    this.portfolioDataService
-      .deleteEducation(educationId)
-      .pipe(finalize(() => this.messageService.clear('confirm')))
-      .subscribe(
-        (res) => {
-          this.fetchEducationData();
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Confirmed',
-            detail: 'Education deleted successfully',
-          });
-
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        },
-        (err) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to delete education',
-          });
-
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        }
-      );
-  }
-
-  onReject() {
-    this.messageService.clear('confirm');
-    this.messageService.add({
-      severity: 'error',
-      summary: 'Rejected',
-      detail: 'You have rejected',
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Education deleted successfully',
     });
   }
 }

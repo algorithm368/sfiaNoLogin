@@ -15,6 +15,9 @@ import { RecoveryPasswordComponent } from './pages/recovery-password/recovery-pa
 import { ResetComponent } from './pages/reset/reset.component'
 import { PortfolioInformationComponent } from './pages/portfolio-information/portfolio-information.component';
 import { ReferenceComponent } from './pages/reference/reference.component';
+import { EducationComponent } from './layouts/education/education.component';
+import { ExperienceComponent } from './layouts/experience/experience.component';
+import { LinkComponent } from './layouts/link/link.component';
 
 const routes: Routes = [
   {path:'', component: HomeComponent},
@@ -31,6 +34,9 @@ const routes: Routes = [
   {path:'reset', component: ResetComponent},
   {path:'portfolio-information', component: PortfolioInformationComponent},
   {path:'reference', component: ReferenceComponent},
+  {path: 'education', component: EducationComponent},
+  {path: 'experience', component: ExperienceComponent},
+  {path: 'link', component: LinkComponent}
 ];
 
 @NgModule({

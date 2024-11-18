@@ -1,15 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
-import { Emitter } from 'src/app/emitters/emitter';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MessageService } from 'primeng/api';
-import { finalize } from 'rxjs/operators';
-import { PortfolioDataService } from 'src/app/service/portfolio-data.service';
 
 interface ExperienceInfo {
   exp_id: string;
-  exp_text: number;
+  exp_text: string;
 }
 
 @Component({
@@ -19,15 +14,19 @@ interface ExperienceInfo {
   providers: [MessageService],
 })
 export class ExperienceComponent implements OnInit {
-  experience: ExperienceInfo[] = [];
+  experience: ExperienceInfo[] = [
+    { exp_id: '1', exp_text: 'Web Developer at XYZ Company' },
+    { exp_id: '2', exp_text: 'Software Engineer at ABC Corp' },
+    { exp_id: '3', exp_text: 'Project Manager at DEF Ltd.' },
+  ];
   updateForm: FormGroup;
+  displayAddExperience: boolean = false;
+  displayEditExperience: boolean = false;
+  confirmEdit: boolean = false;
 
   constructor(
-    public dialog: MatDialog,
-    private router: Router,
     private formBuilder: FormBuilder,
-    private messageService: MessageService,
-    private portfolioDataService: PortfolioDataService
+    private messageService: MessageService
   ) {
     this.updateForm = this.formBuilder.group({
       exp_id: '',
@@ -36,24 +35,8 @@ export class ExperienceComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.fetchExperienceData();
+    // No need to fetch data, as we use static data
   }
-
-  fetchExperienceData(): void {
-    this.portfolioDataService.getExperienceData().subscribe({
-      next: (res) => {
-        this.experience = res.data;
-      },
-      error: () => {
-        this.router.navigate(['/login']);
-        Emitter.authEmitter.emit(false);
-      },
-    });
-  }
-
-  displayAddExperience: boolean = false;
-  displayEditExperience: boolean = false;
-  confirmEdit: boolean = false;
 
   AddExperience() {
     this.updateForm.patchValue({
@@ -74,39 +57,26 @@ export class ExperienceComponent implements OnInit {
   saveAddExperience(): void {
     const formData = this.updateForm.value;
 
-    this.portfolioDataService
-      .saveExperience(formData)
-      .pipe(finalize(() => (this.displayAddExperience = false)))
-      .subscribe(
-        (res) => {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Experience created successfully',
-          });
+    // Add the new experience to the static data
+    this.experience.push({
+      exp_id: (this.experience.length + 1).toString(),
+      exp_text: formData.exp_text,
+    });
 
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Experience created successfully',
+    });
 
-          this.fetchExperienceData();
+    setTimeout(() => {
+      this.messageService.clear();
+    }, 2500);
 
-          this.updateForm.reset({
-            exp_text: '',
-          });
-        },
-        (err) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to created Experience',
-          });
-
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        }
-      );
+    this.displayAddExperience = false;
+    this.updateForm.reset({
+      exp_text: '',
+    });
   }
 
   saveEditExperience(): void {
@@ -125,42 +95,24 @@ export class ExperienceComponent implements OnInit {
   onConfirmEdit() {
     const formData = this.updateForm.value;
 
+    // Update the experience in static data
+    const experience = this.experience.find((exp) => exp.exp_id === formData.exp_id);
+    if (experience) {
+      experience.exp_text = formData.exp_text;
+    }
+
     this.messageService.clear('confirm1');
-    this.portfolioDataService
-      .updateExperience(formData)
-      .pipe(
-        finalize(() => {
-          this.confirmEdit = false;
-        })
-      )
-      .subscribe(
-        (res) => {
-          if (res.success) {
-            this.messageService.add({
-              severity: 'success',
-              summary: 'Success',
-              detail: 'Experience updated successfully',
-            });
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Experience updated successfully',
+    });
 
-            setTimeout(() => {
-              this.messageService.clear();
-            }, 2500);
-            this.fetchExperienceData();
-            this.displayEditExperience = false;
-          }
-        },
-        (err) => {
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'Warning',
-            detail: 'Entered experience data is the same as existing data.',
-          });
-
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        }
-      );
+    setTimeout(() => {
+      this.messageService.clear();
+    }, 2500);
+    this.displayEditExperience = false;
+    this.confirmEdit = false;
   }
 
   onRejectEdit() {
@@ -170,7 +122,7 @@ export class ExperienceComponent implements OnInit {
     this.messageService.add({
       severity: 'error',
       summary: 'Rejected',
-      detail: 'You have rejected',
+      detail: 'You have rejected the changes',
     });
   }
 
@@ -184,7 +136,7 @@ export class ExperienceComponent implements OnInit {
       sticky: true,
       severity: 'warn',
       summary: 'Confirmation',
-      detail: 'Are you sure you want to proceed?',
+      detail: 'Are you sure you want to delete this experience?',
     });
   }
 
@@ -192,34 +144,18 @@ export class ExperienceComponent implements OnInit {
     const formData = this.updateForm.value;
     const experienceId = formData.exp_id;
 
-    this.portfolioDataService
-      .deleteExperience(experienceId)
-      .pipe(finalize(() => this.messageService.clear('confirm')))
-      .subscribe(
-        (res) => {
-          this.fetchExperienceData();
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Confirmed',
-            detail: 'Experience deleted successfully',
-          });
+    // Remove the experience from static data
+    this.experience = this.experience.filter((exp) => exp.exp_id !== experienceId);
 
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        },
-        (err) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to delete Experience',
-          });
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Confirmed',
+      detail: 'Experience deleted successfully',
+    });
 
-          setTimeout(() => {
-            this.messageService.clear();
-          }, 2500);
-        }
-      );
+    setTimeout(() => {
+      this.messageService.clear();
+    }, 2500);
   }
 
   onReject() {
@@ -227,7 +163,7 @@ export class ExperienceComponent implements OnInit {
     this.messageService.add({
       severity: 'error',
       summary: 'Rejected',
-      detail: 'You have rejected',
+      detail: 'You have rejected the deletion',
     });
 
     setTimeout(() => {
